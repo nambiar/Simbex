@@ -26,11 +26,4 @@ void srec_init(pFuncReadBytes pReadBytes, pFuncRecvRecord pRecvRecord);
 
 /** FSM statemachine  */
 bool srec_fsm(void);
-
-/** Send record to be sent to a file or uart */
-void srec_print_record(void);
-
-
-
-
 #endif

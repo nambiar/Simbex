@@ -32,7 +32,7 @@ void open_file_write(FILE** fpBinFile)
 
 uint8_t* read_srec_file(FILE* fpSrecFile,uint8_t size)
 {
-    static int position = 0;
+    static long position = 0;
 
     assert(fpSrecFile != NULL);
     
@@ -73,10 +73,13 @@ bool write_srec_data_to_bin(uint8_t* pdata,uint8_t size)
 int main(int argc, char const *argv[])
 {
     open_file_read(&fpSrecFile);
+    
     open_file_write(&fpBinFile);
+    
     srec_init(get_srec_data,write_srec_data_to_bin);
 
-    bool fsm_stop = false;
+    bool fsm_stop = false;  
+    
     do
     {
         fsm_stop = srec_fsm();

@@ -21,7 +21,7 @@
 #define MIN_BYTES       3U
 #define MAX_BYTES       255U
 
-/* Macros for state machine */
+/* State Machines with labels */
 #define FSM_START() static void *pStates = NULL; if (pStates!=NULL) goto *pStates;
 #define FSM_NEXT_STATE(state) ({pStates = &&state; return true;})
 #define FSM_RESET() ({pStates = NULL; return false;})
@@ -41,11 +41,11 @@ static uint8_t get_ascii_to_hex(uint8_t value)
     {
         return(10 + (value - 'A'));
     }
+
     /* srec record data contains valid hex digits */ 
     assert(!value);
     /* abnormal termination of the program */
     exit(1);
-    
 }
 
 static inline uint8_t srec_address_length(uint8_t srec_type)
@@ -68,17 +68,7 @@ static inline uint8_t srec_address_length(uint8_t srec_type)
     }
 }
 
-static void calculate_crc(uint8_t* data, uint8_t size)
-{
-    /* Assume that byte count added to the checksum value before calling this function */
-        /* Critical section: Calculate CRC */
-    for (uint8_t i = 0; i < record->count; i++)
-    {
-        record->checksum += data[i];
-    }
-}
-
-bool srec_get_start()
+static bool srec_get_start()
 {
     bool got_start = false;
     
@@ -95,7 +85,7 @@ bool srec_get_start()
     return got_start;
 }
 
-bool srec_get_recordtype()
+static bool srec_get_recordtype()
 {
     bool got_recordtype = false;
     
@@ -113,7 +103,7 @@ bool srec_get_recordtype()
     return got_recordtype;
 }
 
-bool srec_get_bytecount()
+static bool srec_get_bytecount()
 {
     bool got_bytecount = false;
     
@@ -136,12 +126,11 @@ bool srec_get_bytecount()
     return got_bytecount;
 }
 
-bool srec_get_address_data()
+static bool srec_get_address_data()
 {
     bool got_address_data = false;
     
     /* Receive address and data */
-    /* Adding support for s1 type record */
     uint8_t* pBuffer = (*pfunc_read_bytes)(record->count);
 
     if(pBuffer == NULL)
@@ -161,7 +150,7 @@ bool srec_get_address_data()
         index_record++;
     }
 
-    /* Take checksum from last 2 bytes */
+    /* Take checksum from last byte */
     record->checksum = record->pData[index_record -1];
     printf("Checksum: %x \n", record->checksum);
 
@@ -171,7 +160,7 @@ bool srec_get_address_data()
     return true;
 }
 
-bool srec_get_delimiter()
+static bool srec_get_delimiter()
 {
     bool got_delimiter = false;
     
@@ -185,7 +174,7 @@ bool srec_get_delimiter()
     return got_delimiter;
 }
 
-void srec_print_record()
+static void srec_print_record()
 {
     printf("Record Type = %x\n",record->type);
     printf("Count = %x\n",(record->count/2));
@@ -208,11 +197,21 @@ bool srec_fsm()
     FSM_START();
 
     GET_START:
-        while(!recv_start)
+        recv_start = srec_get_start();
+        /* EOF occured or unknown states */ 
+        if(false == recv_start)
         {
-            recv_start = srec_get_start();
+            if(record != NULL)
+            {
+                free(record);
+                record = NULL;
+            }
+            FSM_RESET();            
         }
-        FSM_NEXT_STATE(GET_RECORD_TYPE);
+        else
+        {
+            FSM_NEXT_STATE(GET_RECORD_TYPE);
+        }
 
     GET_RECORD_TYPE:
         recv_recordtypte = srec_get_recordtype();
@@ -239,12 +238,9 @@ bool srec_fsm()
             (*pfunc_recv_record)(record->pData + data_offset,size_data);
         }
         free(record->pData);
-        free(record);
-        record = NULL;
-        FSM_RESET();
-    
-    return true;
+        FSM_NEXT_STATE(GET_START);
 
+    return true;
 }
 
 void srec_init(pFuncReadBytes pReadBytes,pFuncRecvRecord pRecvRecord)
@@ -252,4 +248,3 @@ void srec_init(pFuncReadBytes pReadBytes,pFuncRecvRecord pRecvRecord)
     pfunc_read_bytes = pReadBytes;
     pfunc_recv_record = pRecvRecord;
 }
-
