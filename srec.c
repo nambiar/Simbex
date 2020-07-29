@@ -56,11 +56,11 @@ static inline uint8_t srec_address_length(uint8_t srec_type)
     }
     else if (srec_type == RECORD_TYPE_S2)
     {
-        return 4;
+        return 3;
     }
     else if (srec_type == RECORD_TYPE_S3)
     {
-        return 6;
+        return 4;
     }
     else
     {
