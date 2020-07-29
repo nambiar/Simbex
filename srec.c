@@ -128,7 +128,7 @@ static bool srec_get_bytecount()
 
 static bool srec_get_address_data()
 {
-    bool got_address_data = false;
+    bool got_address_data = true;
     
     /* Receive address and data */
     uint8_t* pBuffer = (*pfunc_read_bytes)(record->count);
@@ -142,22 +142,38 @@ static bool srec_get_address_data()
 
     uint8_t index;
     uint8_t index_record = 0;
+    /* Adding the count to checksum */
+    uint16_t checksum = record->checksum;
     for (index = 0; index < record->count; index+=2)
     {
         record->pData[index_record] = (get_ascii_to_hex(pBuffer[index]) << 4) | get_ascii_to_hex(pBuffer[index + 1]);
+        checksum += record->pData[index_record];
         printf("Data Bytes: %x \t", record->pData[index_record]);
-        printf("Index: %x \n", index_record);
+        printf("Index: %x \t", index_record);
+        printf("CheckSum: %x \n", checksum); 
         index_record++;
     }
 
+    /* Removing most significant byte & added checksum to sum as well */
+    checksum -= record->pData[index_record - 1];
+    checksum = checksum & (0x00FF);
+
+    /* Ones compliment */
+    checksum = ~checksum;
+    
+    record->checksum = (uint8_t)checksum;
+
     /* Take checksum from last byte */
-    record->checksum = record->pData[index_record -1];
-    printf("Checksum: %x \n", record->checksum);
+    if(record->checksum != record->pData[index_record -1])
+    {
+        printf("Checksum Exp: %x Calculated: %x \n", record->pData[index_record -1],record->checksum);
+        got_address_data = false;
+    }
 
     /* Free buffer */
     free(pBuffer);
     
-    return true;
+    return got_address_data;
 }
 
 static bool srec_get_delimiter()
