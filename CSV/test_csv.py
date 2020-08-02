@@ -59,6 +59,7 @@ def process_data_start_session(roaster, activity, headimpact):
             continue
 
         #Check if number of players is 15% of the roaster
+        session_valid = False
         check_for_session_end = False
         if(len(activity_within_timerange) >= min_players):
             print(f'Length is {len(activity_within_timerange)}')
@@ -67,14 +68,31 @@ def process_data_start_session(roaster, activity, headimpact):
                 players_with_headimpact = headimpact.loc[(headimpact['PlayerID'] == activity_within_timerange['PlayerID'][row]) & (headimpact['TimeStamp'] == activity_within_timerange['TimeStamp'][row])]
                 if players_with_headimpact.empty is False:
                     #print(activity_within_timestamp)
-                    print(players_with_headimpact)
+                    #print(players_with_headimpact)
                     check_for_session_end = True
         
+        
         if check_for_session_end:
+            #for each row in the time range, check for same playerID in the data and timezone within 24 hours
             for row in activity_within_timerange[['PlayerID','TimeStamp']].index:
-                activity_within_timerange_session_end = activity.loc[(activity['TimeStamp'] > timestamps) & (activity['TimeStamp'] <= 2400 + timestamps) & (activity['PlayerID'] == activity_within_timerange['PlayerID'][row])]
-
-
+                rows_with_playerid_within_same_day = activity.loc[(activity['TimeStamp'] > activity_within_timerange['TimeStamp'][row]) & (activity['TimeStamp'] <= 86400 + activity_within_timerange['TimeStamp'][row]) & (activity['PlayerID'] == activity_within_timerange['PlayerID'][row])]
+                #Sort the rows with the timestamps in ascending order 
+                rows_with_playerid_within_same_day.sort_values(by ='TimeStamp', ascending = 0)
+                #find for loctions which has timedifference of more than 40 min
+                #create a new col with time index
+                rows_with_playerid_within_same_day['time'] = activity.TimeStamp
+                #find the time difference between coloums 
+                rows_with_playerid_within_same_day['time_diff'] = (rows_with_playerid_within_same_day['time']-rows_with_playerid_within_same_day['time'].shift(1)).fillna(0)
+                #get the adjacent coloums which has timediffernce of individual player >40 minutes
+                # That is the place where end of sessions takes place 
+                session_end_time_difference = rows_with_playerid_within_same_day.loc[(rows_with_playerid_within_same_day['time_diff'] >= 2400)]
+                if session_end_time_difference.empty is False:
+                    session_valid = True
+        
+        if session_valid:
+            print(activity_within_timerange)
+        
+                
 def main():
     roaster, activity, headimpact = get_data_frame()
     process_data_start_session(roaster, activity, headimpact)
