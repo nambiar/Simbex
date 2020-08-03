@@ -24,6 +24,9 @@ typedef bool (*pFuncRecvRecord)(uint8_t*,uint8_t);
 /** Also the buffer is provided by that function */
 void srec_init(pFuncReadBytes pReadBytes, pFuncRecvRecord pRecvRecord);
 
-/** FSM statemachine  */
-bool srec_fsm(void);
+/** FSM statemachine for creating a bin file from srec file */
+bool srec_create_bin_fsm(void);
+
+/** FSM statemachine for creating a bin file from srec file */
+bool srec_create_file_fsm(void);
 #endif
